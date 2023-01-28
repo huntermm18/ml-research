@@ -1,0 +1,4 @@
+Start with "simple_stories.py".  That will generate one-sentence responses.
+Then, take a look at "gpt3_code.py"  That attempts to tag each sentence with a category.
+Then, look at "strans.py", which embeds the sentences and projects them to the 2-d space.
+Finally, look at "vis.py" which generates the final plot.

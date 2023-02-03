@@ -75,11 +75,11 @@ umap = UMAP(
 )
 projections = umap.fit_transform( sse_pca[0] )
 
+# start clustering here (dbscan,  agl clustering)
+
 np.save( "./simple_multipass_pca50.npy", sse_pca[0] )
 np.save( "./simple_multipass_projections.npy", projections )
 
-fig = px.scatter(
-    projections, x=0, y=1,
-)
+fig = px.scatter(projections, x=0, y=1,)
 fig.show()
 

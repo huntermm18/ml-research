@@ -7,7 +7,8 @@ from keys import *
 
 openai.api_key = keys['openAI']
 
-def gen_backstory( pid, df ):
+
+def gen_backstory(pid, df):
     person = df.iloc[pid]
     id = person['ids']
     backstory = BACKSTORY_START
@@ -22,15 +23,16 @@ def gen_backstory( pid, df ):
         elif df_val in elem_map:
             newval = elem_map[df_val]
 
-        newval = newval.replace( "<1:[RECORD VERBATIM]>:", "" )
-        backstory += " " + elem_template.replace( 'XXX', newval )
+        newval = newval.replace("<1:[RECORD VERBATIM]>:", "")
+        backstory += " " + elem_template.replace('XXX', newval)
 
     if backstory[0] == ' ':
         backstory = backstory[1:]
 
     return id, backstory
 
-def do_query( prompt, max_tokens=512, engine="davinci" ):
+
+def do_query(prompt, max_tokens=512, engine="davinci"):
     response = openai.Completion.create(
         engine=engine,
         prompt=prompt,
@@ -41,10 +43,11 @@ def do_query( prompt, max_tokens=512, engine="davinci" ):
     )
     return response
 
+
 # ====================================================================================
 
 df = pd.read_csv("./NSYRdones.csv")
-foi_keys = "age gender ethnicity".split() # XXX income paredu parsedu religup
+foi_keys = "age gender ethnicity".split()  # XXX income paredu parsedu religup
 BACKSTORY_START = """When interviewed about their experiences with racism, a person who is"""
 BACKSTORY_END = """ reponded with: \""""
 
@@ -54,24 +57,24 @@ prompts = []
 responses = []
 ethnicities = []
 
-for pid in tqdm( range(len(df)) ):
-# for pid in tqdm(range(10)):
-    for i in range(1): # per count. TODO: Change back to 20
+for pid in tqdm(range(len(df))):
+    # for pid in tqdm(range(10)):
+    for i in range(5):  # per count. TODO: Change back to 20
 
         prompt_ids.append(i)
         ethnicities.append(df.iloc[pid]['ethnicity'])
-        id, prompt = gen_backstory( pid, df )
+        id, prompt = gen_backstory(pid, df)
         prompt += BACKSTORY_END
 
         print("---------------------------------------------------")
-        print( prompt )
+        print(prompt)
 
         done = False
         while not done:
             try:
-                response = do_query( prompt, max_tokens=128, engine="text-davinci-003" )
+                response = do_query(prompt, max_tokens=128, engine="text-davinci-003")
                 resp_text = response.choices[0]['text']
-                print( resp_text )
+                print(resp_text)
                 ids.append(id)
                 prompts.append(prompt)
                 responses.append(resp_text)
@@ -79,5 +82,6 @@ for pid in tqdm( range(len(df)) ):
             except:
                 time.sleep(5.0)
 
-newdf = pd.DataFrame({'ids':ids,'pids':prompt_ids, 'prompt':prompts, 'response':responses, 'ethnicity':ethnicities})
+newdf = pd.DataFrame(
+    {'ids': ids, 'pids': prompt_ids, 'prompt': prompts, 'response': responses, 'ethnicity': ethnicities})
 newdf.to_csv("./results_simple_multipass_text-davinci-003.csv")

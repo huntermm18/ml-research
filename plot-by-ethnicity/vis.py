@@ -1,12 +1,74 @@
-import matplotlib.pyplot as plt
-
-plt.ion()
-# import seaborn as sns
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+plt.ion()
+
+OUTPUT_FILE_NAMES  = ['plotly-graph.html', 'output-graphs.pdf', 'plotly-graph-clusters.html']
 
 df = pd.read_csv("./results_simple_multipass_text-davinci-003.csv")
+
+# ------------------- get sentiment data -------------------
+
+import matplotlib.backends.backend_pdf
+from textblob import TextBlob
+pdf = matplotlib.backends.backend_pdf.PdfPages(f"./result_viz/{OUTPUT_FILE_NAMES[1]}")
+
+# Function to calculate sentiment polarity
+def sentiment_polarity(text, includ_neutral=False):
+    sentiment = TextBlob(text).sentiment.polarity
+    if sentiment < 0:
+        return "Negative"
+    elif sentiment == 0 and includ_neutral:
+        return "Neutral"
+    else:
+        return "Positive"
+
+stories = {}
+sentiment_means = {}
+ethnicities = df['ethnicity'].unique()
+for e in ethnicities:
+    stories[e] = None
+for e in ethnicities:
+    stories[e] = df['response'].loc[(df['ethnicity'] == e)]
+for e in ethnicities:
+    s = []
+    for response in stories[e]:
+        s.append(TextBlob(response).sentiment.polarity)
+    sentiment_means[e] = np.mean(s)
+
+# matplot lib bar chart
+import matplotlib.pyplot as plt
+data = sentiment_means
+ind = np.arange(len(data))
+fig = plt.figure()
+plt.bar(ind, list(data.values()))
+plt.xticks(ind, list(data.keys()))
+plt.show()
+pdf.savefig(fig)
+
+# pie charts
+for ethnicity in stories.keys():
+  sentiment_list = [sentiment_polarity(story) for story in stories[ethnicity]]
+
+  sentiment_keys = ['Positive', 'Negative']
+  if len(sentiment_list) == 0:
+    print('sentiment list empty: ', ethnicity)
+    continue
+  values = [sentiment_list.count('Positive') / len(sentiment_list), sentiment_list.count('Negative') / len(sentiment_list)]
+
+  # Plotting the results as a pie chart
+  fig = plt.figure()
+  plt.pie(values, labels=sentiment_keys, startangle=90, counterclock=False,
+          autopct='%1.1f%%', shadow=True)
+  plt.axis('equal')
+  plt.title(f'Sentiment Analysis Results: {ethnicity}')
+  plt.show()
+  pdf.savefig(fig)
+
+# save figures to pdf
+pdf.close()
+# ------------------- End get sentiment data -------------------
 
 sentences = []
 for pid in tqdm(range(len(df))):
@@ -49,7 +111,16 @@ for r in range(rid):
     legend_entries.append(rrids[r])
     plt.scatter(projections[inds, 0], projections[inds, 1], alpha=0.5)
 plt.legend(legend_entries)
+# ---------------------- clustering -------------------------------------------------
+from sklearn.cluster import KMeans
 
+def cluster_data(data, n_clusters):
+    kmeans = KMeans(n_clusters=n_clusters, random_state=0)
+    kmeans.fit(data)
+    return kmeans.labels_
+
+cluster_labels = cluster_data(projections, 5)
+# ---------------------- clustering -------------------------------------------------
 # ---------------------- plotly -------------------------------------------------
 # import plotly
 import plotly.express as px
@@ -79,4 +150,15 @@ fig = px.scatter(
     hover_data=[s1, s2, s3, s4]
 )
 # fig.show()
-fig.write_html("./result_viz/index.html")
+fig.write_html(f"./result_viz/{OUTPUT_FILE_NAMES[0]}")
+
+# color by cluster
+fig = px.scatter(
+    projections,
+    x=0, y=1,
+    color=cluster_labels,
+    color_discrete_sequence=px.colors.qualitative.Prism,
+    hover_name=rtexts,
+    hover_data=[s1, s2, s3, s4]
+)
+fig.write_html(f"./result_viz/{OUTPUT_FILE_NAMES[2]}")
